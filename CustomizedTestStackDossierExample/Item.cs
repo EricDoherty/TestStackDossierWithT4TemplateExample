@@ -7,8 +7,15 @@ namespace CustomizedTestStackDossierExample
 		public int Id;
 
 		[StringLength(50)]
-		public string Name;
+		public string Name { get; set; }
 
-		public double Cost;
+		[StringLength(100)]
+		public string BrandName { get; set; }
+
+		public double Cost { get; set; }
+
+		public int OrderId { get; set; }
+
+		public Order Order { get; set; }
 	}
 }

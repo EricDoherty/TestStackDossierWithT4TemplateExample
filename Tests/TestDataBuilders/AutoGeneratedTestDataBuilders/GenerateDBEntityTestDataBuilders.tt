@@ -1,0 +1,212 @@
+﻿<#@ template debug="false" hostspecific="true" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System" #>
+<#@ import namespace="System.IO" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Diagnostics" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="EnvDTE" #>
+<#@ include file="VisualStudioHelper.ttinclude" #>
+<#@ output extension=".cs" #>
+using System;
+using CustomizedTestStackDossierExample;
+using TestStack.Dossier;
+using TestStack.Dossier.Lists;
+using TestStack.Dossier.EquivalenceClasses;
+
+<#
+	foreach(CodeClass codeClass in GetClassesToGenerateBuildersFor())
+	{
+#>
+public partial class <#=codeClass.Name#>Builder : TestDataBuilder<<#=codeClass.Name#>, <#=codeClass.Name#>Builder>
+{
+	public <#=codeClass.Name#>Builder()
+	{
+<#
+		foreach(CodeProperty property in GetPropertiesWithStringLengthAttribute(GetPropertiesForClass(codeClass)))
+		{
+			WriteStringWithLengthDefault(property);
+		}
+#>
+		PopulateDefaultValues();
+	}
+
+<#
+		foreach(CodeProperty property in GetPropertiesForClass(codeClass))
+		{
+			WritePropertySetFunction(property, codeClass);
+		}
+#>
+}
+
+<#
+	}
+#>
+
+<#+
+	private List<CodeClass> GetClassesToGenerateBuildersFor()
+	{
+		List<string> namespacesContainingClassesToGenerateTestDataBuildersFor = new List<string>() {"CustomizedTestStackDossierExample"};
+
+		var project = VisualStudioHelper.GetProject("CustomizedTestStackDossierExample");
+		var allClasses = VisualStudioHelper.CodeModel.GetAllCodeElementsOfType(project.CodeModel.CodeElements, vsCMElement.vsCMElementClass, false);
+
+		List<CodeClass> classesToGenerateTestDataBuildersFor = new List<CodeClass>();
+
+		foreach (CodeClass @class in allClasses)
+		{
+			if (namespacesContainingClassesToGenerateTestDataBuildersFor.Contains(@class.Namespace.Name))
+			{
+				classesToGenerateTestDataBuildersFor.Add(@class);
+			}
+		}
+
+		return classesToGenerateTestDataBuildersFor;
+	}
+
+	private List<CodeProperty> GetPropertiesForClass(CodeClass codeClass)
+	{
+		var propertyCodeElements = VisualStudioHelper.CodeModel.GetAllCodeElementsOfType(codeClass.Members, vsCMElement.vsCMElementProperty, true).OrderBy((x) => x.Name).ToList();
+
+		var properties = new List<CodeProperty>();
+
+		foreach (CodeProperty property in propertyCodeElements)
+		{
+			properties.Add(property);
+		}
+
+		return properties;
+	}
+
+	private List<CodeProperty> GetPropertiesWithStringLengthAttribute(List<CodeProperty> codeProperties)
+	{
+		return codeProperties.Where((codeProperty) => VisualStudioHelper.CodeModel.GetAllCodeElementsOfType(codeProperty.Attributes, vsCMElement.vsCMElementAttribute, true)
+			.Any((attribute) => attribute.Name == "StringLength")).ToList();
+	}
+
+	private string GetStringLengthOfProperty(CodeProperty codeProperty)
+	{
+		var stringLengthAttribute = ((CodeAttribute)VisualStudioHelper.CodeModel.GetAllCodeElementsOfType(codeProperty.Attributes, vsCMElement.vsCMElementAttribute, true)
+			.Where((attribute) => attribute.Name == "StringLength").First());
+
+		string stringLength = stringLengthAttribute.Value;
+
+		if (stringLengthAttribute.Value.Contains(","))
+		{
+			stringLength = stringLengthAttribute.Value.Substring(0, stringLengthAttribute.Value.IndexOf(","));
+		}
+
+		return stringLength;
+	}
+
+	private List<CodeProperty> GetListProperties(List<CodeProperty> codeProperties)
+	{
+		return codeProperties.Where((property) => 
+			property.Type.TypeKind == vsCMTypeRef.vsCMTypeRefCodeType && 
+			property.Type.CodeType.Kind == vsCMElement.vsCMElementClass && 
+			property.Type.CodeType.Name == "List").ToList();
+	}
+
+	private string CreateVariableNameBasedOnPropertyName(string propertyName)
+	{
+		return propertyName.First().ToString().ToLower() + propertyName.Substring(1);
+	}
+
+	private String GetGenericTypeName(CodeProperty property)
+	{
+		string genericTypeName = "";
+
+		if (property.Type.AsFullName.Contains("<"))
+		{
+			string fullTypeName = property.Type.AsFullName;
+			genericTypeName = fullTypeName.Substring(fullTypeName.LastIndexOf(".") + 1, fullTypeName.Length - fullTypeName.LastIndexOf(".") - 2);
+		}
+
+		return genericTypeName;
+	}
+
+	private void WritePropertySetFunction(CodeProperty property, CodeClass codeClass)
+	{
+		if (property.Type.TypeKind != vsCMTypeRef.vsCMTypeRefCodeType ||
+			property.Type.CodeType.Kind == vsCMElement.vsCMElementEnum ||
+			property.Type.CodeType.Kind == vsCMElement.vsCMElementStruct)
+		{
+			WritePrimitiveAndEnumPropertySetFunction(property, codeClass);
+		}
+		else if (property.Type.CodeType.Kind == vsCMElement.vsCMElementClass 
+			|| property.Type.CodeType.Kind == vsCMElement.vsCMElementInterface)
+		{
+			if (property.Type.CodeType.Name == "List")
+			{
+				WriteCollectionPropertySetFunction(property, codeClass);
+			}
+			else
+			{
+				WriteObjectPropertySetFunction(property, codeClass);
+			}
+		}
+		else
+		{
+			throw new Exception(string.Format("Unknown property type:\nProperty: {0}.{1}\nType Kind: {2}\nTypeName: {3}", codeClass.Name, property.Name, property.Type.CodeType.Kind, property.Type.CodeType.Name));
+		}
+	}
+
+#>
+
+<#+
+	private void WritePrimitiveAndEnumPropertySetFunction(CodeProperty property, CodeClass codeClass)
+	{
+#>
+	public virtual <#=codeClass.Name#>Builder With<#=property.Name#>(<#=property.Type.AsString#> <#=CreateVariableNameBasedOnPropertyName(property.Name)#>)
+	{
+		return Set(x => x.<#=property.Name#>, <#=CreateVariableNameBasedOnPropertyName(property.Name)#>);
+	}
+
+<#+
+	}
+#>
+
+<#+
+	private void WriteObjectPropertySetFunction(CodeProperty property, CodeClass codeClass)
+	{
+#>
+	public virtual <#=codeClass.Name#>Builder With<#=property.Name#>(Func<<#=property.Type.CodeType.Name#>Builder, <#=property.Type.CodeType.Name#>Builder> modifier = null)
+	{
+		return Set(x => x.<#=property.Name#>, GetChildBuilder<<#=property.Type.CodeType.Name#>, <#=property.Type.CodeType.Name#>Builder>(modifier));
+	}
+
+<#+
+	}
+#>
+
+<#+
+	private void WriteCollectionPropertySetFunction(CodeProperty property, CodeClass codeClass)
+	{
+#>
+	public virtual <#=codeClass.Name#>Builder With<#=property.Name#>(int listSize, Func<ListBuilder<<#=GetGenericTypeName(property)#>, <#=GetGenericTypeName(property)#>Builder>, <#=GetGenericTypeName(property)#>Builder> modifier = null)
+	{		
+		return Set(x => x.<#=property.Name#>, GetListChildBuilder<<#=GetGenericTypeName(property)#>, <#=GetGenericTypeName(property)#>Builder, ListBuilder<<#=GetGenericTypeName(property)#>, <#=GetGenericTypeName(property)#>Builder>>(() => <#=GetGenericTypeName(property)#>Builder.CreateListOfSize(listSize), modifier));
+	}
+
+<#+
+	}
+#>
+
+<#+
+	private void WriteEmptyListDefault(CodeProperty property)
+	{
+#>
+		With<#=property.Name#>(0);
+<#+
+	}
+#>
+
+<#+
+	private void WriteStringWithLengthDefault(CodeProperty property)
+	{
+#>
+		With<#=property.Name#>(Any.StringOfLength(<#=GetStringLengthOfProperty(property)#>));
+<#+
+	}
+#>

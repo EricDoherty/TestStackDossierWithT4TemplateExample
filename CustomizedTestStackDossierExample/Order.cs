@@ -6,6 +6,10 @@ namespace CustomizedTestStackDossierExample
 	{
 		public int Id;
 
-		public List<Item> Items;
+		public int CustomerId { get; set; }
+
+		public Customer Customer { get; set; }
+
+		public List<Item> Items { get; set; }
 	}
 }

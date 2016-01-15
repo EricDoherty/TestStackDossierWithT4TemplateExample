@@ -7,6 +7,19 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CustomizedTestStackDossierE
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj", "{4C8CDBD1-774C-45B4-92DC-879E95D07EA2}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Dependencies", "Dependencies", "{4800CAE8-0F19-405F-BCBF-63D191897575}"
+	ProjectSection(SolutionItems) = preProject
+		Dependencies\Castle.Core.dll = Dependencies\Castle.Core.dll
+		Dependencies\Castle.Core.xml = Dependencies\Castle.Core.xml
+		Dependencies\NSubstitute.dll = Dependencies\NSubstitute.dll
+		Dependencies\NSubstitute.xml = Dependencies\NSubstitute.xml
+		Dependencies\Ploeh.AutoFixture.dll = Dependencies\Ploeh.AutoFixture.dll
+		Dependencies\Ploeh.AutoFixture.xml = Dependencies\Ploeh.AutoFixture.xml
+		Dependencies\TestStack.Dossier.dll = Dependencies\TestStack.Dossier.dll
+		Dependencies\TestStack.Dossier.pdb = Dependencies\TestStack.Dossier.pdb
+		Dependencies\TestStack.Dossier.xml = Dependencies\TestStack.Dossier.xml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
